@@ -1,14 +1,40 @@
 #!/bin/bash
 
 # Specify the name of the hook to check
-HOOK_NAME="pre-commit"
+HOOK_NAME="gitleaks"
 
 # Get the path to the hooks directory
 HOOKS_DIR=$(git rev-parse --git-dir)/hooks
 
 # Check if the hook file exists
 if [ -f "$HOOKS_DIR/$HOOK_NAME" ]; then
-    echo "$HOOK_NAME hook is enabled."
+    # Check if gitleaks command is present in the hook script
+    if grep -q "gitleaks" "$HOOKS_DIR/$HOOK_NAME"; then
+        echo "gitleaks hook is enabled."
+    else
+        echo "gitleaks hook is present but not enabled."
+    fi
 else
-    echo "$HOOK_NAME hook is not enabled."
+    echo "gitleaks hook is not enabled. Installing..."
+
+    if [ "$os" = "macos" ]; then
+        echo "Installing for macOS"
+        brew install gitleaks
+        exit 0
+    fi
+
+    if [ "$os" = "linux" ]; then
+        vers=$(curl -k -s https://api.github.com/repos/gitleaks/gitleaks/releases/latest | grep "tag_name" | grep -Eo "[0-9]{1,}\.[0-9]{1,}\.[0-9]{1,}")
+        curl -f  "https://github.com/gitleaks/gitleaks/releases/download/v$vers/gitleaks_${vers}_linux_x64.tar.gz" -o gitleaks.tar.gz
+        tar -xvf gitleaks.tar.gz
+        rm gitleaks.tar.gz
+        chmod +x gitleaks
+        mv gitleaks /usr/local/bin/
+        exit 0
+    fi
+
+    echo "Unsupported operating system: $os"
+    exit 1
 fi
+
+echo "Gitleaks is installed."
